@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+		<title>Websocket client</title>
+		<style type="text/css" media="screen">
+			body {
+				margin-top:0;
+			}
+			.green {
+				color: #067E06;
+			}
+			.red {
+				color: #cd0e0e;
+			}
+			.data {
+				border: 1px solid #AAA;
+			}
+			form{
+				display: inline;
+			}
+			#toolbar{
+				border-bottom: 2px solid #CCCCFF;
+				line-height: 2em;
+				vertical-align: middle;
+			}
+			#log {
+				line-height: 1.3;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="toolbar">
+			<div id="connect">
+				<input type="text" id="wsserver" value="ws://localhost:8080/echo" /> <input type="button" value="Connect" onclick="return ws_connect();"/>
+			</div>
+			<div id="tools" style="display:none;">
+				<input type="text" id="val" value="" />
+				<input type="button" onclick="return ws_send_data();" value="Send" />
+				<input type="button" value="Disconnect" onclick="return ws_disconnect();"/>
+			</div>
+		</div>
+		<div id="log"></div>
+		<script type="text/javascript">
+		//<![CDATA[
+		var log = document.getElementById("log");
+		var connect = document.getElementById("connect");
+		var tools = document.getElementById("tools");
+		var val = document.getElementById("val");
+		var ws;
+		
+		function ws_connect() {
+			if ("WebSocket" in window) {
+				ws = new WebSocket(document.getElementById("wsserver").value);
+				ws.onopen = function(event) {
+					log.innerHTML+=
+						"<div class='green'>websocket connected</div>";
+					connect.style.display = 'none';
+					tools.style.display = 'block';
+				};
+
+				ws.onerror = function(event) {
+					log.innerHTML+=
+						"<div class='red'>error on websocket!</div>";
+				};
+
+				ws.onmessage = function(event) {
+					log.innerHTML+=
+						"<div>get message:<span class='data'>"+event.data+"</span></div>";
+				};
+
+				ws.onclose = function(event) {
+					log.innerHTML+=
+						"<div class='red'>websocket closed</div>";
+					connect.style.display = 'block';
+					tools.style.display = 'none';
+				};
+			} else {
+				// the browser doesn't support WebSocket
+				alert("WebSocket NOT supported here!\r\n\r\nBrowser: " +
+					navigator.appName + " " + navigator.appVersion);
+			}
+
+			return false;
+		}
+
+		function ws_disconnect() {
+			ws.close();
+
+			return false;
+		}
+
+		function ws_send_data() {
+			log.innerHTML+=
+				"<div>send message:<span class='data'>"+val.value+"</span></div>";
+			ws.send(val.value);
+
+			return false;
+		}
+		//]]>
+		</script>
+	</body>
+</html>
