@@ -278,7 +278,7 @@ enum ws_frame_type ws_parse_input_frame(const uint8_t *input_frame, size_t input
 				data_length *= 0x80;
 				data_length += *frame_ptr & 0xF9;
 				if (data_length < old_data_length || // overflow occured
-						input_len < data_length) // something wrong :\
+						input_len < data_length) // something wrong
 					return WS_ERROR_FRAME;
 				frame_ptr++;
 			}
