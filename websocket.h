@@ -62,9 +62,8 @@ static const char versionField[] PROGMEM = "Sec-WebSocket-Version: ";
 static const char version[] PROGMEM = "13";
 static const char secret[] PROGMEM = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
-//static const char error426[] PROGMEM = "HTTP/1.1 426 Upgrade Required";
-//static const char error400[] PROGMEM = "HTTP/1.1 400 Bad Request";
 enum wsFrameType {
+	WS_EMPTY_FRAME,
 	WS_ERROR_FRAME,
 	WS_WRONG_VERSION_FRAME,
 	WS_INCOMPLETE_FRAME,
@@ -80,6 +79,7 @@ struct handshake {
 	char *key;
 	char *protocol;
 	char *resource;
+	enum frameType;
 };
 
 	/**
@@ -100,7 +100,7 @@ struct handshake {
 	 * @param out_len .in.out. length of out frame buffer. Return length of out frame
 	 * @return WS_OPENING_FRAME
 	 */
-	enum wsFrameType ws_get_handshake_answer(const struct handshake *hs,
+	enum wsFrameType wsGetHandshakeAnswer(const struct handshake *hs,
 		uint8_t *out_frame, size_t *out_len);
 
 	/**

@@ -81,7 +81,7 @@ int client_worker(SOCKET clientsocket)
 		return EXIT_FAILURE;
 	}
 	out_len = BUF_LEN;
-	ws_get_handshake_answer(&hs, buffer, &out_len);
+	wsGetHandshakeAnswer(&hs, buffer, &out_len);
 	#ifdef PACKET_DUMP
 		printf("Out packet:\n");
 		fwrite(buffer, 1, out_len, stdout);

@@ -39,6 +39,7 @@ void nullHandshake(struct handshake *hs)
 	hs->protocol = NULL;
 	hs->resource = NULL;
 	hs->key = NULL;
+	hs->frameType = WS_EMPTY_FRAME;
 }
 
 static char* getUptoLinefeed(const char *start_from)
@@ -153,36 +154,52 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 	return WS_OPENING_FRAME;
 }
 
-enum wsFrameType ws_get_handshake_answer(const struct handshake *hs,
+enum wsFrameType wsGetHandshakeAnswer(const struct handshake *hs,
 		uint8_t *outFrame, size_t *outLength)
 {
 	assert(outFrame && *outLength);
-	assert(hs && hs->key);
+	
+	uint8_t written = 0;
+	if (hs->frameType == WS_ERROR_FRAME || hs->frameType == WS_WRONG_VERSION_FRAME) {
+		written = sprintf_P((char *)outFrame,
+			PSTR("HTTP/1.1 400 Bad Request\r\n"
+			"%s%s\r\n"),
+			versionField,
+			version);
+	} else if (hs->frameType == WS_OPENING_FRAME) {
+		assert(hs && hs->key);
 
-	char *responseKey;
-	uint8_t length = strlen(hs->key)+strlen_P(secret);
-	responseKey = malloc(length);
-	memcpy(responseKey, hs->key, strlen(hs->key));
-	memcpy_P(responseKey[strlen(hs->key)], secret, strlen_P(secret));
-	char shaHash[20];
-	sha1(shaHash, responseKey, length*8);
-	base64enc(responseKey, shaHash, 20);
-    
-	unsigned int written = sprintf_P((char *)outFrame,
-			PSTR("HTTP/1.1 101 Switching Protocols\r\n"
-			"Upgrade: websocket\r\n"
-			"Connection: Upgrade\r\n"
-			"Sec-WebSocket-Accept: %s\r\n"),
-			responseKey);
-	if (hs->protocol)
-		written += sprintf_P((char *)outFrame + written,
-			PSTR("Sec-WebSocket-Protocol: %s\r\n"), hs->protocol);
+		char *responseKey;
+		uint8_t length = strlen(hs->key)+strlen_P(secret);
+		responseKey = malloc(length);
+		memcpy(responseKey, hs->key, strlen(hs->key));
+		memcpy_P(responseKey[strlen(hs->key)], secret, strlen_P(secret));
+		char shaHash[20];
+		sha1(shaHash, responseKey, length*8);
+		base64enc(responseKey, shaHash, 20);
 
+		written = sprintf_P((char *)outFrame,
+				PSTR("HTTP/1.1 101 Switching Protocols\r\n"
+				"%s%s\r\n"
+				"%s%s\r\n"
+				"Sec-WebSocket-Accept: %s\r\n"),
+				upgradeField,
+				websocket,
+				connectionField,
+				upgrade,
+				responseKey);
+		if (hs->protocol)
+			written += sprintf_P((char *)outFrame + written,
+				PSTR("Sec-WebSocket-Protocol: %s\r\n"), hs->protocol);
+	}
+	
 	// if assert fail, that means, that we corrupt memory
 	assert(written <= *outLength);
 
-	return WS_OPENING_FRAME;
+//	return WS_OPENING_FRAME;
 }
+
+
 
 enum wsFrameType ws_make_frame(const uint8_t *data, size_t data_len,
 		uint8_t *out_frame, size_t *out_len, enum wsFrameType frame_type)
