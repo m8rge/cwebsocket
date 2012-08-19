@@ -41,9 +41,9 @@ int client_worker(SOCKET clientsocket)
 	size_t readed_length = 0;
 	size_t out_len = BUF_LEN;
 	int written = 0;
-	enum ws_frame_type frame_type = WS_INCOMPLETE_FRAME;
+	enum wsFrameType frame_type = WS_INCOMPLETE_FRAME;
 	struct handshake hs;
-	nullhandshake(&hs);
+	nullHandshake(&hs);
 
 	// read openinig handshake
 	while (frame_type == WS_INCOMPLETE_FRAME) {
@@ -60,7 +60,7 @@ int client_worker(SOCKET clientsocket)
 		#endif
 		readed_length+= readed;
 		assert(readed_length <= BUF_LEN);
-		frame_type = ws_parse_handshake(buffer, readed_length, &hs);
+		frame_type = wsParseHandshake(buffer, readed_length, &hs);
 		if (frame_type == WS_INCOMPLETE_FRAME && readed_length == BUF_LEN) {
 			fprintf(stderr, "Buffer too small\n");
 			closesocket(clientsocket);

@@ -32,7 +32,7 @@
 
 static char rn[] PROGMEM = "\r\n";
 
-void nullhandshake(struct handshake *hs)
+void nullHandshake(struct handshake *hs)
 {
 	hs->host = NULL;
 	hs->origin = NULL;
@@ -62,14 +62,14 @@ static char* getUptoLinefeed(const char *start_from, char *write_to)
 	memcpy(write_to, start_from, new_length - 1);
 }
 
-enum ws_frame_type ws_parse_handshake(const uint8_t *input_frame, size_t input_len,
+enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 		struct handshake *hs)
 {
-	const char *input_ptr = (const char *)input_frame;
-	const char *end_ptr = (const char *)input_frame + input_len;
+	const char *inputPtr = (const char *)inputFrame;
+	const char *endPtr = (const char *)inputFrame + inputLength;
 
 	// measure resource size
-	char *first = strchr((const char *)input_frame, ' ');
+	char *first = strchr((const char *)inputFrame, ' ');
 	if (!first)
 		return WS_ERROR_FRAME;
 	first++;
@@ -84,62 +84,68 @@ enum ws_frame_type ws_parse_handshake(const uint8_t *input_frame, size_t input_l
 	hs->resource = (char *)malloc(second - first + 1); // +1 is for \x00 symbol
 	assert(hs->resource);
 
-	if (sscanf_P(input_ptr, PSTR("GET %s HTTP/1.1\r\n"), hs->resource) != 1)
+	if (sscanf_P(inputPtr, PSTR("GET %s HTTP/1.1\r\n"), hs->resource) != 1)
 		return WS_ERROR_FRAME;
-	input_ptr = strstr_P(input_ptr, rn) + 2;
+	inputPtr = strstr_P(inputPtr, rn) + 2;
 
 	/*
 		parse next lines
 	 */
-	#define input_ptr_len (input_len - (input_ptr-input_frame))
+	#define input_ptr_len (inputLength - (inputPtr-inputFrame))
 	#define prepare(x) do {if (x) { free(x); x = NULL; }} while(0)
 	#define strtolower(x) do { for (int i = 0; compare[i]; i++) compare[i] = tolower(compare[i]); } while(0)
-	uint8_t connection_flag = FALSE;
-	uint8_t upgrade_flag = FALSE;
+	uint8_t connectionFlag = FALSE;
+	uint8_t upgradeFlag = FALSE;
 	char versionString[2];
-	while (input_ptr < end_ptr && input_ptr[0] != '\r' && input_ptr[1] != '\n') {
-		if (memcmp_P(input_ptr, hostField, strlen_P(hostField)) == 0) {
-			input_ptr += strlen_P(hostField);
+	while (inputPtr < endPtr && inputPtr[0] != '\r' && inputPtr[1] != '\n') {
+		if (memcmp_P(inputPtr, hostField, strlen_P(hostField)) == 0) {
+			inputPtr += strlen_P(hostField);
 			prepare(hs->host);
-			hs->host = getUptoLinefeed(input_ptr);
-		} else if (memcmp_P(input_ptr, originField, strlen_P(originField)) == 0) {
-			input_ptr += strlen_P(originField);
+			hs->host = getUptoLinefeed(inputPtr);
+		} else 
+		if (memcmp_P(inputPtr, originField, strlen_P(originField)) == 0) {
+			inputPtr += strlen_P(originField);
 			prepare(hs->origin);
-			hs->origin = getUptoLinefeed(input_ptr);
-		} else if (memcmp_P(input_ptr, protocolField, strlen_P(protocolField)) == 0) {
-			input_ptr += strlen_P(protocolField);
+			hs->origin = getUptoLinefeed(inputPtr);
+		} else 
+		if (memcmp_P(inputPtr, protocolField, strlen_P(protocolField)) == 0) {
+			inputPtr += strlen_P(protocolField);
 			prepare(hs->protocol);
-			hs->protocol = getUptoLinefeed(input_ptr);
-		} else if (memcmp_P(input_ptr, keyField, strlen_P(keyField)) == 0) {
-			input_ptr += strlen_P(keyField);
+			hs->protocol = getUptoLinefeed(inputPtr);
+		} else 
+		if (memcmp_P(inputPtr, keyField, strlen_P(keyField)) == 0) {
+			inputPtr += strlen_P(keyField);
 			prepare(hs->key);
-			hs->key = getUptoLinefeed(input_ptr);
-		} else if (memcmp_P(input_ptr, versionField, strlen_P(versionField)) == 0) {
-			input_ptr += strlen_P(versionField);
-			getUptoLinefeed(input_ptr, versionString);
-		} else if (memcmp_P(input_ptr, connectionField, strlen_P(connectionField)) == 0) {
-			input_ptr += strlen_P(versionField);
+			hs->key = getUptoLinefeed(inputPtr);
+		} else 
+		if (memcmp_P(inputPtr, versionField, strlen_P(versionField)) == 0) {
+			inputPtr += strlen_P(versionField);
+			getUptoLinefeed(inputPtr, versionString);
+		} else 
+		if (memcmp_P(inputPtr, connectionField, strlen_P(connectionField)) == 0) {
+			inputPtr += strlen_P(versionField);
 			char *compare = NULL;
-			compare = getUptoLinefeed(input_ptr);
+			compare = getUptoLinefeed(inputPtr);
 			strtolower(compare);
 			assert(compare);
 			if (memcmp_P(compare, connection, strlen_P(connection)) == 0)
-				connection_flag = TRUE;
-		} else if (memcmp_P(input_ptr, upgradeField, strlen_P(upgradeField)) == 0) {
-			input_ptr += strlen_P(upgradeField);
+				connectionFlag = TRUE;
+		} else 
+		if (memcmp_P(inputPtr, upgradeField, strlen_P(upgradeField)) == 0) {
+			inputPtr += strlen_P(upgradeField);
 			char *compare = NULL;
-			compare = getUptoLinefeed(input_ptr);
+			compare = getUptoLinefeed(inputPtr);
 			strtolower(compare);
 			assert(compare);
 			if (memcmp_P(compare, upgrade, strlen_P(upgrade)) == 0)
-				upgrade_flag = TRUE;
+				upgradeFlag = TRUE;
 		};
 
-		input_ptr = strstr_P(input_ptr, rn) + 2;
+		inputPtr = strstr_P(inputPtr, rn) + 2;
 	}
 
 	// we have read all data, so check them
-	if (!hs->host || !hs->key || !connection_flag || !upgrade_flag)
+	if (!hs->host || !hs->key || !connectionFlag || !upgradeFlag)
 		return WS_ERROR_FRAME;
 	if (memcmp_P(versionString, version, strlen_P(version)) != 0)
 		return WS_WRONG_VERSION_FRAME;
@@ -147,10 +153,10 @@ enum ws_frame_type ws_parse_handshake(const uint8_t *input_frame, size_t input_l
 	return WS_OPENING_FRAME;
 }
 
-enum ws_frame_type ws_get_handshake_answer(const struct handshake *hs,
-		uint8_t *out_frame, size_t *out_len)
+enum wsFrameType ws_get_handshake_answer(const struct handshake *hs,
+		uint8_t *outFrame, size_t *outLength)
 {
-	assert(out_frame && *out_len);
+	assert(outFrame && *outLength);
 	assert(hs && hs->key);
 
 	char *responseKey;
@@ -162,24 +168,24 @@ enum ws_frame_type ws_get_handshake_answer(const struct handshake *hs,
 	sha1(shaHash, responseKey, length*8);
 	base64enc(responseKey, shaHash, 20);
     
-	unsigned int written = sprintf_P((char *)out_frame,
+	unsigned int written = sprintf_P((char *)outFrame,
 			PSTR("HTTP/1.1 101 Switching Protocols\r\n"
 			"Upgrade: websocket\r\n"
 			"Connection: Upgrade\r\n"
 			"Sec-WebSocket-Accept: %s\r\n"),
 			responseKey);
 	if (hs->protocol)
-		written += sprintf_P((char *)out_frame + written,
+		written += sprintf_P((char *)outFrame + written,
 			PSTR("Sec-WebSocket-Protocol: %s\r\n"), hs->protocol);
 
 	// if assert fail, that means, that we corrupt memory
-	assert(written <= *out_len);
+	assert(written <= *outLength);
 
 	return WS_OPENING_FRAME;
 }
 
-enum ws_frame_type ws_make_frame(const uint8_t *data, size_t data_len,
-		uint8_t *out_frame, size_t *out_len, enum ws_frame_type frame_type)
+enum wsFrameType ws_make_frame(const uint8_t *data, size_t data_len,
+		uint8_t *out_frame, size_t *out_len, enum wsFrameType frame_type)
 {
 	assert(out_frame && *out_len);
 	assert(data);
@@ -221,10 +227,10 @@ enum ws_frame_type ws_make_frame(const uint8_t *data, size_t data_len,
 	return frame_type;
 }
 
-enum ws_frame_type ws_parse_input_frame(const uint8_t *input_frame, size_t input_len,
+enum wsFrameType ws_parse_input_frame(const uint8_t *input_frame, size_t input_len,
 		uint8_t **out_data_ptr, size_t *out_len)
 {
-	enum ws_frame_type frame_type;
+	enum wsFrameType frame_type;
 
 	assert(out_len); 
 	assert(input_len);

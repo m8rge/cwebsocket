@@ -64,7 +64,7 @@ static const char secret[] PROGMEM = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 //static const char error426[] PROGMEM = "HTTP/1.1 426 Upgrade Required";
 //static const char error400[] PROGMEM = "HTTP/1.1 400 Bad Request";
-enum ws_frame_type {
+enum wsFrameType {
 	WS_ERROR_FRAME,
 	WS_WRONG_VERSION_FRAME,
 	WS_INCOMPLETE_FRAME,
@@ -90,7 +90,7 @@ struct handshake {
 	 * @return [WS_INCOMPLETE_FRAME, WS_ERROR_FRAME, WS_OPENING_FRAME]
 	 */
 
-	enum ws_frame_type ws_parse_handshake(const uint8_t *input_frame, size_t input_len,
+	enum wsFrameType wsParseHandshake(const uint8_t *input_frame, size_t input_len,
 		struct handshake *hs);
 	
 	/**
@@ -100,7 +100,7 @@ struct handshake {
 	 * @param out_len .in.out. length of out frame buffer. Return length of out frame
 	 * @return WS_OPENING_FRAME
 	 */
-	enum ws_frame_type ws_get_handshake_answer(const struct handshake *hs,
+	enum wsFrameType ws_get_handshake_answer(const struct handshake *hs,
 		uint8_t *out_frame, size_t *out_len);
 
 	/**
@@ -112,8 +112,8 @@ struct handshake {
 	 * @param frame_type .in. [WS_TEXT_FRAME] frame type to build
 	 * @return [WS_ERROR_FRAME, WS_TEXT_FRAME]
 	 */
-	enum ws_frame_type ws_make_frame(const uint8_t *data, size_t data_len,
-		uint8_t *out_frame, size_t *out_len, enum ws_frame_type frame_type);
+	enum wsFrameType ws_make_frame(const uint8_t *data, size_t data_len,
+		uint8_t *out_frame, size_t *out_len, enum wsFrameType frame_type);
 
 	/**
 	 *
@@ -123,14 +123,14 @@ struct handshake {
 	 * @param out_len .in.out. length of out data buffer. Return length of extracted data
 	 * @return [WS_INCOMPLETE_FRAME, WS_TEXT_FRAME, WS_CLOSING_FRAME, WS_ERROR_FRAME]
 	 */
-	enum ws_frame_type ws_parse_input_frame(const uint8_t *input_frame, size_t input_len,
+	enum wsFrameType ws_parse_input_frame(const uint8_t *input_frame, size_t input_len,
 		uint8_t **out_data_ptr, size_t *out_len);
 
 	/**
 	 *
 	 * @param hs .out. nulled handshake struct
 	 */
-	void nullhandshake(struct handshake *hs);
+	void nullHandshake(struct handshake *hs);
 
 #ifdef	__cplusplus
 }
