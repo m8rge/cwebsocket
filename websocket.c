@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010 Putilov Andrey
+ * Copyright (c) 2012 Putilov Andrey
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,30 +35,13 @@ static char rn[] PROGMEM = "\r\n";
 void nullhandshake(struct handshake *hs)
 {
 	hs->host = NULL;
-	hs->key1 = NULL;
-	hs->key2 = NULL;
 	hs->origin = NULL;
 	hs->protocol = NULL;
 	hs->resource = NULL;
+	hs->key = NULL;
 }
 
-static uint32_t doStuffToObtainAnInt32(const char *key)
-{
-	char res_decimals[15] = "";
-	char *tail_res = res_decimals;
-	uint8_t space_count = 0;
-	uint8_t i = 0;
-	do {
-		if (isdigit(key[i]))
-			strncat(tail_res++, &key[i], 1);
-		if (key[i] == ' ')
-			space_count++;
-	} while (key[++i]);
-
-	return ((uint32_t) strtoul(res_decimals, NULL, 10) / space_count);
-}
-
-static char* get_upto_linefeed(const char *start_from)
+static char* getUptoLinefeed(const char *start_from)
 {
 	char *write_to;
 	uint8_t new_length = strstr_P(start_from, rn) - start_from + 1;
@@ -69,6 +52,14 @@ static char* get_upto_linefeed(const char *start_from)
 	write_to[ new_length - 1 ] = 0;
 
 	return write_to;
+}
+
+static char* getUptoLinefeed(const char *start_from, char *write_to)
+{
+	uint8_t new_length = strstr_P(start_from, rn) - start_from + 1;
+	assert(new_length);
+	assert(write_to);
+	memcpy(write_to, start_from, new_length - 1);
 }
 
 enum ws_frame_type ws_parse_handshake(const uint8_t *input_frame, size_t input_len,
@@ -102,54 +93,57 @@ enum ws_frame_type ws_parse_handshake(const uint8_t *input_frame, size_t input_l
 	 */
 	#define input_ptr_len (input_len - (input_ptr-input_frame))
 	#define prepare(x) do {if (x) { free(x); x = NULL; }} while(0)
+	#define strtolower(x) do { for (int i = 0; compare[i]; i++) compare[i] = tolower(compare[i]); } while(0)
 	uint8_t connection_flag = FALSE;
 	uint8_t upgrade_flag = FALSE;
+	char versionString[2];
 	while (input_ptr < end_ptr && input_ptr[0] != '\r' && input_ptr[1] != '\n') {
-		if (memcmp_P(input_ptr, host, strlen_P(host)) == 0) {
-			input_ptr += strlen_P(host);
+		if (memcmp_P(input_ptr, hostField, strlen_P(hostField)) == 0) {
+			input_ptr += strlen_P(hostField);
 			prepare(hs->host);
-			hs->host = get_upto_linefeed(input_ptr);
-		} else
-			if (memcmp_P(input_ptr, origin, strlen_P(origin)) == 0) {
-			input_ptr += strlen_P(origin);
+			hs->host = getUptoLinefeed(input_ptr);
+		} else if (memcmp_P(input_ptr, originField, strlen_P(originField)) == 0) {
+			input_ptr += strlen_P(originField);
 			prepare(hs->origin);
-			hs->origin = get_upto_linefeed(input_ptr);
-		} else
-			if (memcmp_P(input_ptr, protocol, strlen_P(protocol)) == 0) {
-			input_ptr += strlen_P(protocol);
+			hs->origin = getUptoLinefeed(input_ptr);
+		} else if (memcmp_P(input_ptr, protocolField, strlen_P(protocolField)) == 0) {
+			input_ptr += strlen_P(protocolField);
 			prepare(hs->protocol);
-			hs->protocol = get_upto_linefeed(input_ptr);
-		} else
-			if (memcmp_P(input_ptr, key1, strlen_P(key1)) == 0) {
-			input_ptr += strlen_P(key1);
-			prepare(hs->key1);
-			hs->key1 = get_upto_linefeed(input_ptr);
-		} else
-			if (memcmp_P(input_ptr, key2, strlen_P(key2)) == 0) {
-			input_ptr += strlen_P(key2);
-			prepare(hs->key2);
-			hs->key2 = get_upto_linefeed(input_ptr);
-		} else
-			if (memcmp_P(input_ptr, connection, strlen_P(connection)) == 0) {
-			connection_flag = TRUE;
-		} else
-			if (memcmp_P(input_ptr, upgrade, strlen_P(upgrade)) == 0) {
-			upgrade_flag = TRUE;
+			hs->protocol = getUptoLinefeed(input_ptr);
+		} else if (memcmp_P(input_ptr, keyField, strlen_P(keyField)) == 0) {
+			input_ptr += strlen_P(keyField);
+			prepare(hs->key);
+			hs->key = getUptoLinefeed(input_ptr);
+		} else if (memcmp_P(input_ptr, versionField, strlen_P(versionField)) == 0) {
+			input_ptr += strlen_P(versionField);
+			getUptoLinefeed(input_ptr, versionString);
+		} else if (memcmp_P(input_ptr, connectionField, strlen_P(connectionField)) == 0) {
+			input_ptr += strlen_P(versionField);
+			char *compare = NULL;
+			compare = getUptoLinefeed(input_ptr);
+			strtolower(compare);
+			assert(compare);
+			if (memcmp_P(compare, connection, strlen_P(connection)) == 0)
+				connection_flag = TRUE;
+		} else if (memcmp_P(input_ptr, upgradeField, strlen_P(upgradeField)) == 0) {
+			input_ptr += strlen_P(upgradeField);
+			char *compare = NULL;
+			compare = getUptoLinefeed(input_ptr);
+			strtolower(compare);
+			assert(compare);
+			if (memcmp_P(compare, upgrade, strlen_P(upgrade)) == 0)
+				upgrade_flag = TRUE;
 		};
 
 		input_ptr = strstr_P(input_ptr, rn) + 2;
 	}
 
 	// we have read all data, so check them
-	if (!hs->host || !hs->origin || !hs->key1 || !hs->key2 ||
-			!connection_flag || !upgrade_flag)
+	if (!hs->host || !hs->key || !connection_flag || !upgrade_flag)
 		return WS_ERROR_FRAME;
-
-	input_ptr += 2; // skip empty line
-	if (end_ptr - input_ptr < 8)
-		return WS_INCOMPLETE_FRAME;
-	memcpy(hs->key3, input_ptr, 8);
-
+	if (memcmp_P(versionString, version, strlen_P(version)) != 0)
+		return WS_WRONG_VERSION_FRAME;
+    
 	return WS_OPENING_FRAME;
 }
 
@@ -157,44 +151,29 @@ enum ws_frame_type ws_get_handshake_answer(const struct handshake *hs,
 		uint8_t *out_frame, size_t *out_len)
 {
 	assert(out_frame && *out_len);
-	// hs->key3 is always not NULL
-	assert(hs && hs->origin && hs->host && hs->resource && hs->key1 && hs->key2);
+	assert(hs && hs->key);
 
-	uint8_t chrkey1[4];
-	uint8_t chrkey2[4];
-	uint32_t key1 = doStuffToObtainAnInt32(hs->key1);
-	uint32_t key2 = doStuffToObtainAnInt32(hs->key2);
-	uint8_t i;
-	for (i = 0; i < 4; i++)
-		chrkey1[i] = key1 << (8 * i) >> (8 * 3);
-	for (i = 0; i < 4; i++)
-		chrkey2[i] = key2 << (8 * i) >> (8 * 3);
-
-	uint8_t raw_md5[16];
-	uint8_t keys[16];
-	memcpy(keys, chrkey1, 4);
-	memcpy(&keys[4], chrkey2, 4);
-	memcpy(&keys[8], hs->key3, 8);
-	md5(raw_md5, keys, sizeof (keys)*8);
-
+	char *responseKey;
+	uint8_t length = strlen(hs->key)+strlen_P(secret);
+	responseKey = malloc(length);
+	memcpy(responseKey, hs->key, strlen(hs->key));
+	memcpy_P(responseKey[strlen(hs->key)], secret, strlen_P(secret));
+	char shaHash[20];
+	sha1(shaHash, responseKey, length*8);
+	base64enc(responseKey, shaHash, 20);
+    
 	unsigned int written = sprintf_P((char *)out_frame,
-			PSTR("HTTP/1.1 101 WebSocket Protocol Handshake\r\n"
-			"Upgrade: WebSocket\r\n"
+			PSTR("HTTP/1.1 101 Switching Protocols\r\n"
+			"Upgrade: websocket\r\n"
 			"Connection: Upgrade\r\n"
-			"Sec-WebSocket-Origin: %s\r\n"
-			"Sec-WebSocket-Location: ws://%s%s\r\n"),
-			hs->origin,
-			hs->host,
-			hs->resource);
+			"Sec-WebSocket-Accept: %s\r\n"),
+			responseKey);
 	if (hs->protocol)
 		written += sprintf_P((char *)out_frame + written,
 			PSTR("Sec-WebSocket-Protocol: %s\r\n"), hs->protocol);
-	written += sprintf_P((char *)out_frame + written, rn);
 
 	// if assert fail, that means, that we corrupt memory
-	assert(written <= *out_len && written + sizeof (keys) <= *out_len);
-	memcpy(out_frame + written, raw_md5, sizeof (keys));
-	*out_len = written + sizeof (keys);
+	assert(written <= *out_len);
 
 	return WS_OPENING_FRAME;
 }

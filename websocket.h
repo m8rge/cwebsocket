@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2010 Putilov Andrey
+ * Copyright (c) 2012 Putilov Andrey
  *
- * Permission is hereby granted, free of uint8_tge, to any person obtaining a copy
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
@@ -35,7 +35,8 @@ extern "C" {
 #include <stdio.h> /* sscanf */
 #include <ctype.h> /* isdigit */
 #include <stddef.h> /* size_t */
-#include "md5.h"
+#include "base64_enc.h"
+#include "sha1.h"
 #ifdef __AVR__
 	#include <avr/pgmspace.h>
 #else
@@ -46,18 +47,26 @@ extern "C" {
 	#define sprintf_P sprintf
 	#define strlen_P strlen
 	#define memcmp_P memcmp
+	#define memcpy_P memcpy
 #endif
 
-static const char connection[] PROGMEM = "Connection: Upgrade";
-static const char upgrade[] PROGMEM = "Upgrade: WebSocket";
-static const char host[] PROGMEM = "Host: ";
-static const char origin[] PROGMEM = "Origin: ";
-static const char protocol[] PROGMEM = "Sec-WebSocket-Protocol: ";
-static const char key1[] PROGMEM = "Sec-WebSocket-Key1: ";
-static const char key2[] PROGMEM = "Sec-WebSocket-Key2: ";
+static const char connectionField[] PROGMEM = "Connection: ";
+static const char upgrade[] PROGMEM = "upgrade";
+static const char upgradeField[] PROGMEM = "Upgrade: ";
+static const char websocket[] PROGMEM = "websocket";
+static const char hostField[] PROGMEM = "Host: ";
+static const char originField[] PROGMEM = "Origin: ";
+static const char keyField[] PROGMEM = "Sec-WebSocket-Key: ";
+static const char protocolField[] PROGMEM = "Sec-WebSocket-Protocol: ";
+static const char versionField[] PROGMEM = "Sec-WebSocket-Version: ";
+static const char version[] PROGMEM = "13";
+static const char secret[] PROGMEM = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
+//static const char error426[] PROGMEM = "HTTP/1.1 426 Upgrade Required";
+//static const char error400[] PROGMEM = "HTTP/1.1 400 Bad Request";
 enum ws_frame_type {
 	WS_ERROR_FRAME,
+	WS_WRONG_VERSION_FRAME,
 	WS_INCOMPLETE_FRAME,
 	WS_TEXT_FRAME,
 	WS_BINARY_FRAME,
@@ -66,13 +75,11 @@ enum ws_frame_type {
 };
 
 struct handshake {
-	char *resource;
 	char *host;
 	char *origin;
+	char *key;
 	char *protocol;
-	char *key1;
-	char *key2;
-	char key3[8];
+	char *resource;
 };
 
 	/**
@@ -82,9 +89,10 @@ struct handshake {
 	 * @param hs .out. clear with nullhandshake() handshake struct
 	 * @return [WS_INCOMPLETE_FRAME, WS_ERROR_FRAME, WS_OPENING_FRAME]
 	 */
+
 	enum ws_frame_type ws_parse_handshake(const uint8_t *input_frame, size_t input_len,
 		struct handshake *hs);
-
+	
 	/**
 	 *
 	 * @param hs .in. filled handshake struct
