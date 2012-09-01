@@ -65,10 +65,11 @@ static const char secret[] PROGMEM = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 enum wsFrameType {
 	WS_EMPTY_FRAME,
 	WS_ERROR_FRAME,
-	WS_WRONG_VERSION_FRAME,
 	WS_INCOMPLETE_FRAME,
 	WS_TEXT_FRAME,
 	WS_BINARY_FRAME,
+	WS_PING_FRAME,
+	WS_PONG_FRAME,
 	WS_OPENING_FRAME,
 	WS_CLOSING_FRAME
 };
@@ -98,9 +99,8 @@ struct handshake {
 	 * @param hs .in. filled handshake struct
 	 * @param out_frame .out. pointer to out frame buffer
 	 * @param out_len .in.out. length of out frame buffer. Return length of out frame
-	 * @return WS_OPENING_FRAME
 	 */
-	enum wsFrameType wsGetHandshakeAnswer(const struct handshake *hs,
+	void wsGetHandshakeAnswer(const struct handshake *hs,
 		uint8_t *out_frame, size_t *out_len);
 
 	/**
@@ -117,14 +117,14 @@ struct handshake {
 
 	/**
 	 *
-	 * @param input_frame .in. pointer to input frame
-	 * @param input_len .in. length of input frame
-	 * @param out_data_ptr .out. pointer to extracted data in input frame
-	 * @param out_len .in.out. length of out data buffer. Return length of extracted data
+	 * @param inputFrame .in. pointer to input frame
+	 * @param inputLen .in. length of input frame
+	 * @param outDataPtr .out. pointer to extracted data in input frame
+	 * @param outLen .in.out. length of out data buffer. Return length of extracted data
 	 * @return [WS_INCOMPLETE_FRAME, WS_TEXT_FRAME, WS_CLOSING_FRAME, WS_ERROR_FRAME]
 	 */
-	enum wsFrameType ws_parse_input_frame(const uint8_t *input_frame, size_t input_len,
-		uint8_t **out_data_ptr, size_t *out_len);
+	enum wsFrameType wsParseInputFrame(const uint8_t *inputFrame, size_t inputLen,
+		uint8_t *outDataPtr, size_t *outLen);
 
 	/**
 	 *

@@ -15,3 +15,5 @@ With this library you can get realtime properties from your microcontroller only
 * frames with raw data (implemented, but not tested)
 * non-latin characters in text frames
 * websocket extensions
+* cookies
+* continuation frame (all payload data length must be encapsulated into one frame)
