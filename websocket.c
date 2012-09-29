@@ -124,12 +124,12 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 			getUptoLinefeed(inputPtr, versionString);
 		} else 
 		if (memcmp_P(inputPtr, connectionField, strlen_P(connectionField)) == 0) {
-			inputPtr += strlen_P(versionField);
-			char *compare = NULL;
-			compare = getUptoLinefeed(inputPtr);
-			strtolower(compare);
-			assert(compare);
-			if (memcmp_P(compare, connection, strlen_P(connection)) == 0)
+			inputPtr += strlen_P(connectionField);
+			char *connectionValue = NULL;
+			connectionValue = getUptoLinefeed(inputPtr);
+			strtolower(connectionValue);
+			assert(connectionValue);
+			if (strstr_P(connectionValue, connection) != NULL)
 				connectionFlag = TRUE;
 		} else 
 		if (memcmp_P(inputPtr, upgradeField, strlen_P(upgradeField)) == 0) {
