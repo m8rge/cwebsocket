@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include "base64_enc.h"
 
-#if 1
+#ifdef __AVR__
 #include <avr/pgmspace.h>
 
 const char base64_alphabet[64] PROGMEM = {

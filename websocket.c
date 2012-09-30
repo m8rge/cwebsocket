@@ -45,22 +45,22 @@ void nullHandshake(struct handshake *hs)
 static char* getUptoLinefeed(const char *startFrom)
 {
 	char *write_to;
-	uint8_t new_length = strstr_P(startFrom, rn) - startFrom + 1;
+	uint8_t new_length = strstr_P(startFrom, rn) - startFrom;
 	assert(new_length);
-	write_to = (char *)malloc(new_length); //+1 for '\x00'
+	write_to = (char *)malloc(new_length+1); //+1 for '\x00'
 	assert(write_to);
-	memcpy(write_to, startFrom, new_length - 1);
-	write_to[ new_length - 1 ] = 0;
+	memcpy(write_to, startFrom, new_length);
+	write_to[ new_length ] = 0;
 
 	return write_to;
 }
 
-static char* getUptoLinefeed(const char *startFrom, char *writeTo)
+void copyUptoLinefeed(const char *startFrom, char *writeTo)
 {
-	uint8_t new_length = strstr_P(startFrom, rn) - startFrom + 1;
+	uint8_t new_length = strstr_P(startFrom, rn) - startFrom;
 	assert(new_length);
 	assert(writeTo);
-	memcpy(writeTo, startFrom, new_length - 1);
+	memcpy(writeTo, startFrom, new_length);
 }
 
 enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
@@ -77,7 +77,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 			25+2/*version*/)
 		return WS_INCOMPLETE_FRAME;
 	
-	if (memcmp_P(inputFrame, PSTR("GET ")) != 0)
+	if (memcmp_P(inputFrame, PSTR("GET "), 4) != 0)
 		return WS_ERROR_FRAME;
 	// measure resource size
 	char *first = strchr((const char *)inputFrame, ' ');
@@ -104,7 +104,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 	 */
 	#define input_ptr_len (inputLength - (inputPtr-inputFrame))
 	#define prepare(x) do {if (x) { free(x); x = NULL; }} while(0)
-	#define strtolower(x) do { for (int i = 0; compare[i]; i++) compare[i] = tolower(compare[i]); } while(0)
+	#define strtolower(x) do { for (int i = 0; x[i]; i++) x[i] = tolower(x[i]); } while(0)
 	uint8_t connectionFlag = FALSE;
 	uint8_t upgradeFlag = FALSE;
 	char versionString[2];
@@ -131,7 +131,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 		} else 
 		if (memcmp_P(inputPtr, versionField, strlen_P(versionField)) == 0) {
 			inputPtr += strlen_P(versionField);
-			getUptoLinefeed(inputPtr, versionString);
+			copyUptoLinefeed(inputPtr, versionString);
 		} else 
 		if (memcmp_P(inputPtr, connectionField, strlen_P(connectionField)) == 0) {
 			inputPtr += strlen_P(connectionField);
@@ -139,7 +139,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 			connectionValue = getUptoLinefeed(inputPtr);
 			strtolower(connectionValue);
 			assert(connectionValue);
-			if (strstr_P(connectionValue, connection) != NULL)
+			if (strstr_P(connectionValue, upgrade) != NULL)
 				connectionFlag = TRUE;
 		} else 
 		if (memcmp_P(inputPtr, upgradeField, strlen_P(upgradeField)) == 0) {
@@ -148,7 +148,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 			compare = getUptoLinefeed(inputPtr);
 			strtolower(compare);
 			assert(compare);
-			if (memcmp_P(compare, upgrade, strlen_P(upgrade)) == 0)
+			if (memcmp_P(compare, websocket, strlen_P(websocket)) == 0)
 				upgradeFlag = TRUE;
 		};
 
@@ -163,8 +163,8 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 	return WS_OPENING_FRAME;
 }
 
-void wsGetHandshakeAnswer(const struct handshake *hs,
-		uint8_t *outFrame, size_t *outLength)
+void wsGetHandshakeAnswer(const struct handshake *hs, uint8_t *outFrame, 
+		size_t *outLength)
 {
 	assert(outFrame && *outLength);
 	
@@ -182,7 +182,7 @@ void wsGetHandshakeAnswer(const struct handshake *hs,
 		uint8_t length = strlen(hs->key)+strlen_P(secret);
 		responseKey = malloc(length);
 		memcpy(responseKey, hs->key, strlen(hs->key));
-		memcpy_P(responseKey[strlen(hs->key)], secret, strlen_P(secret));
+		memcpy_P(&(responseKey[strlen(hs->key)]), secret, strlen_P(secret));
 		char shaHash[20];
 		sha1(shaHash, responseKey, length*8);
 		base64enc(responseKey, shaHash, 20);
@@ -206,23 +206,23 @@ void wsGetHandshakeAnswer(const struct handshake *hs,
 	assert(written <= *outLength);
 }
 
-enum wsFrameType wsMakeFrame(const uint8_t *data, size_t dataLength,
+void wsMakeFrame(const uint8_t *data, size_t dataLength,
 		uint8_t *outFrame, size_t *outLength, enum wsFrameType frameType)
 {
 	assert(outFrame && *outLength);
 	assert(data);
 	
-	/*if (frame_type == WS_TEXT_FRAME) {
+	/*if (frameType == WS_TEXT_FRAME) {
 		// check on latin alphabet. If not - return error
-		uint8_t *data_ptr = (uint8_t *) data;
-		uint8_t *end_ptr = (uint8_t *) data + data_len;
+		uint8_t *dataPtr = (uint8_t *) data;
+		uint8_t *endPtr = (uint8_t *) data + dataLength;
 		do {
-			if (*data_ptr >> 7)
+			if (*dataPtr >> 7)
 				return WS_ERROR_FRAME;
-		} while ((++data_ptr < end_ptr));
+		} while ((++dataPtr < endPtr));
 
-		assert(*out_len >= data_len + 2);
-		out_frame[0] = '\x00';
+		assert(*outLength >= dataLength + 2);
+		out_frame[0] = 0x80 & ;
 		memcpy(&out_frame[1], data, data_len);
 		out_frame[ data_len + 1 ] = '\xFF';
 		*out_len = data_len + 2;
@@ -244,42 +244,41 @@ enum wsFrameType wsMakeFrame(const uint8_t *data, size_t dataLength,
 		for (i = 0; i < size_len; i++) // copying big-endian length
 			out_frame[1 + i] = out_size_buf[size_len - 1 - i];
 		memcpy(&out_frame[1 + size_len], data, data_len);
-	}
-
-	return frame_type;*/
+	}*/
 }
 
-uint64_t getPayloadLength(const uint8_t *inputFrameCursor, size_t inputLen,
-		uint8_t *payloadFieldExtraBytes, enum wsFrameType frameType) 
+uint64_t getPayloadLength(const uint8_t *inputFrameCursor, size_t inputLength,
+		uint8_t *payloadFieldExtraBytes, enum wsFrameType *frameType) 
 {
-	uint64_t payloadLength = inputFrameCursor[1]&7F;
+	uint64_t payloadLength = inputFrameCursor[1]&0x7F;
 	*payloadFieldExtraBytes = 0;
-	if (payloadLength = 126 && inputLen < 4 ||
-			payloadLength = 127 && inputLen < 10) {
-		frameType = WS_INCOMPLETE_FRAME;
+	if (payloadLength == 126 && inputLength < 4 ||
+			payloadLength == 127 && inputLength < 10) {
+		*frameType = WS_INCOMPLETE_FRAME;
 		return 0;
 	}
-	if (payloadLength = 127 && inputFrameCursor[3]&0x80 != 0x0) {
-		frameType = WS_ERROR_FRAME;
+	if (payloadLength == 127 && inputFrameCursor[3]&0x80 != 0x0) {
+		*frameType = WS_ERROR_FRAME;
 		return 0;
 	}
-	if (payloadLength = 126) {
+	inputFrameCursor+=2;
+	if (payloadLength == 126) {
 		uint16_t payloadLength16b = 0;
 		*payloadFieldExtraBytes = 2;
-		memcpy(&payloadLength16b, &(inputLen[2]), *payloadFieldExtraBytes);
+		memcpy(&payloadLength16b, inputFrameCursor, *payloadFieldExtraBytes);
 		payloadLength = payloadLength16b;
-		inputFrameCursor = &(inputLen[4]);
+		inputFrameCursor+= 2;
 	}
-	if (payloadLength = 127) {
+	if (payloadLength == 127) {
 		*payloadFieldExtraBytes = 8;
-		memcpy(&payloadLength, &(inputLen[2]), *payloadFieldExtraBytes);
-		inputFrameCursor = &(inputLen[10]);
+		memcpy(&payloadLength, inputFrameCursor, *payloadFieldExtraBytes);
+		inputFrameCursor+= 8;
 	}
 	
 	return payloadLength;
 }
 
-enum wsFrameType wsParseInputFrame(const uint8_t *inputFrame, size_t inputLength,
+enum wsFrameType wsParseInputFrame(uint8_t *inputFrame, size_t inputLength,
 		uint8_t *outDataPtr, size_t *outLength)
 {
 	assert(outLength); 
@@ -305,25 +304,23 @@ enum wsFrameType wsParseInputFrame(const uint8_t *inputFrame, size_t inputLength
 	{ 
 		uint8_t *inputFrameCursor = inputFrame;
 		uint8_t payloadFieldExtraBytes;
-		enum wsFrameType frameType = NULL;
+		enum wsFrameType frameType = WS_INCOMPLETE_FRAME;
 		uint64_t payloadLength = getPayloadLength(inputFrameCursor, inputLength, 
 				&payloadFieldExtraBytes, &frameType);
-		if (frameType != NULL)
+		if (payloadLength == 0)
 			return frameType;
-		if (payloadLength > outLength)
-			return WS_ERROR_FRAME;
 		if (payloadLength < inputLength-6-payloadFieldExtraBytes) // 4-maskingKey, 2-header
 			return WS_INCOMPLETE_FRAME;
-		uint32_t *maskingKey = inputFrameCursor;
+		uint32_t *maskingKey = (uint32_t *)inputFrameCursor;
 		inputFrameCursor+= 4;
 		
 		assert(payloadLength == inputLength-6-payloadFieldExtraBytes);
 		
 		outDataPtr = inputFrameCursor;
-		outLength = payloadLength;
+		*outLength = payloadLength;
 		
-		for (uint8_t i=0; i<outLength; i++) {
-			inputFrameCursor[i] = inputFrameCursor[i] ^ (*maskingKey)[i%4];
+		for (uint8_t i=0; i<*outLength; i++) {
+			inputFrameCursor[i] = inputFrameCursor[i] ^ *(maskingKey +i%4);
 		}
 		
 		if (opcode == 0x01)

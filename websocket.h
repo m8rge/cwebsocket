@@ -66,12 +66,12 @@ enum wsFrameType {
 	WS_EMPTY_FRAME,
 	WS_ERROR_FRAME,
 	WS_INCOMPLETE_FRAME,
-	WS_TEXT_FRAME,
-	WS_BINARY_FRAME,
-	WS_PING_FRAME,
-	WS_PONG_FRAME,
+	WS_TEXT_FRAME = 0x01,
+	WS_BINARY_FRAME = 0x02,
+	WS_PING_FRAME = 0x09,
+	WS_PONG_FRAME = 0x0A,
 	WS_OPENING_FRAME,
-	WS_CLOSING_FRAME
+	WS_CLOSING_FRAME = 0x08
 };
 
 struct handshake {
@@ -80,7 +80,7 @@ struct handshake {
 	char *key;
 	char *protocol;
 	char *resource;
-	enum frameType;
+	enum wsFrameType frameType;
 };
 
 	/**
@@ -97,8 +97,8 @@ struct handshake {
 	 * @param outFrame Pointer to frame buffer
 	 * @param outLength Length of frame buffer. Return length of out frame
 	 */
-	void wsGetHandshakeAnswer(const struct handshake *hs,
-		uint8_t *outFrame, size_t *outLength);
+	void wsGetHandshakeAnswer(const struct handshake *hs, uint8_t *outFrame, 
+			size_t *outLength);
 
 	/**
 	 * @param data Pointer to input data array
@@ -106,24 +106,23 @@ struct handshake {
 	 * @param outFrame Pointer to frame buffer
 	 * @param outLength Length of out frame buffer. Return length of out frame
 	 * @param frameType [WS_TEXT_FRAME] frame type to build
-	 * @return [WS_ERROR_FRAME, WS_TEXT_FRAME]
 	 */
-	enum wsFrameType wsMakeFrame(const uint8_t *data, size_t dataLength,
+	void wsMakeFrame(const uint8_t *data, size_t dataLength,
 		uint8_t *outFrame, size_t *outLength, enum wsFrameType frameType);
 
 	/**
 	 *
 	 * @param inputFrame Pointer to input frame
 	 * @param inputLen Length of input frame
-	 * @param outDataPtr Pointer to extracted data in input frame
-	 * @param outLen Length of out data buffer. Return length of extracted data
+	 * @param outDataPtr Return pointer to extracted data in input frame
+	 * @param outLen Return length of extracted data
 	 * @return Type of parsed frame
 	 */
-	enum wsFrameType wsParseInputFrame(const uint8_t *inputFrame, size_t inputLength,
+	enum wsFrameType wsParseInputFrame(uint8_t *inputFrame, size_t inputLength,
 		uint8_t *outDataPtr, size_t *outLength);
 
 	/**
-	 * @param hs NULL handshake struct
+	 * @param hs NULL handshake structure
 	 */
 	void nullHandshake(struct handshake *hs);
 

@@ -27,15 +27,11 @@
 
 #include <string.h> /* memcpy & co */
 #include <stdint.h>
-#include "config.h"
-#include "debug.h"
 #include "sha1.h"
 
 #ifdef DEBUG
 #  undef DEBUG
 #endif
-
-#include "cli.h"
 
 #define LITTLE_ENDIAN
 
@@ -46,7 +42,6 @@
  *
  */
 void sha1_init(sha1_ctx_t *state){
-	DEBUG_S("\r\nSHA1_INIT");
 	state->h[0] = 0x67452301;
 	state->h[1] = 0xefcdab89;
 	state->h[2] = 0x98badcfe;
@@ -68,17 +63,14 @@ uint32_t change_endian32(uint32_t x){
 
 /* three SHA-1 inner functions */
 uint32_t ch(uint32_t x, uint32_t y, uint32_t z){
-	DEBUG_S("\r\nCH");
 	return ((x&y)^((~x)&z));
 }
 
 uint32_t maj(uint32_t x, uint32_t y, uint32_t z){
-	DEBUG_S("\r\nMAJ");
 	return ((x&y)^(x&z)^(y&z));
 }
 
 uint32_t parity(uint32_t x, uint32_t y, uint32_t z){
-	DEBUG_S("\r\nPARITY");
 	return ((x^y)^z);
 }
 
@@ -228,10 +220,8 @@ void sha1_ctx2hash (void *dest, sha1_ctx_t *state){
  */
 void sha1 (void *dest, const void* msg, uint32_t length){
 	sha1_ctx_t s;
-	DEBUG_S("\r\nBLA BLUB");
 	sha1_init(&s);
 	while(length & (~0x0001ff)){ /* length>=512 */
-		DEBUG_S("\r\none block");
 		sha1_nextBlock(&s, msg);
 		msg = (uint8_t*)msg + SHA1_BLOCK_BITS/8; /* increment pointer to next block */
 		length -= SHA1_BLOCK_BITS;
