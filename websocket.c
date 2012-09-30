@@ -320,7 +320,7 @@ enum wsFrameType wsParseInputFrame(uint8_t *inputFrame, size_t inputLength,
 		*outLength = payloadLength;
 		
 		for (uint8_t i=0; i<*outLength; i++) {
-			inputFrameCursor[i] = inputFrameCursor[i] ^ *(maskingKey +i%4);
+			inputFrameCursor[i] = inputFrameCursor[i] ^ *(maskingKey + i%4);
 		}
 		
 		if (opcode == 0x01)
