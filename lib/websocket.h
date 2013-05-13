@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 Putilov Andrey
+ * Copyright (c) 2013 Putilov Andrey
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@ extern "C" {
 #include <string.h>
 #include <stdio.h> /* sscanf */
 #include <ctype.h> /* isdigit */
-#include <stddef.h> /* size_t */
+//#include <stddef.h> /* size_t */
 #include "base64_enc.h"
 #include "sha1.h"
 #ifdef __AVR__
@@ -50,8 +50,16 @@ extern "C" {
 	#define memcpy_P memcpy
 #endif
 
+#ifndef TRUE
+#define TRUE 1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
+
 static const char connectionField[] PROGMEM = "Connection: ";
 static const char upgrade[] PROGMEM = "upgrade";
+static const char upgrade2[] PROGMEM = "Upgrade";
 static const char upgradeField[] PROGMEM = "Upgrade: ";
 static const char websocket[] PROGMEM = "websocket";
 static const char hostField[] PROGMEM = "Host: ";
@@ -63,22 +71,27 @@ static const char version[] PROGMEM = "13";
 static const char secret[] PROGMEM = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 enum wsFrameType {
-	WS_EMPTY_FRAME = -1,
-	WS_ERROR_FRAME = -2,
-	WS_INCOMPLETE_FRAME = -3,
+	WS_EMPTY_FRAME = 0xF0,
+	WS_ERROR_FRAME = 0xF1,
+	WS_INCOMPLETE_FRAME = 0xF2,
 	WS_TEXT_FRAME = 0x01,
 	WS_BINARY_FRAME = 0x02,
 	WS_PING_FRAME = 0x09,
 	WS_PONG_FRAME = 0x0A,
-	WS_OPENING_FRAME = -4,
+	WS_OPENING_FRAME = 0xF3,
 	WS_CLOSING_FRAME = 0x08
+};
+    
+enum wsState {
+    WS_STATE_OPENING,
+    WS_STATE_NORMAL,
+    WS_STATE_CLOSING
 };
 
 struct handshake {
 	char *host;
 	char *origin;
 	char *key;
-	char *protocol;
 	char *resource;
 	enum wsFrameType frameType;
 };
@@ -99,7 +112,7 @@ struct handshake {
 	 */
 	void wsGetHandshakeAnswer(const struct handshake *hs, uint8_t *outFrame, 
 			size_t *outLength);
-
+    
 	/**
 	 * @param data Pointer to input data array
 	 * @param dataLength Length of data array
@@ -112,14 +125,14 @@ struct handshake {
 
 	/**
 	 *
-	 * @param inputFrame Pointer to input frame
+	 * @param inputFrame Pointer to input frame. Frame will be modified.
 	 * @param inputLen Length of input frame
 	 * @param outDataPtr Return pointer to extracted data in input frame
 	 * @param outLen Return length of extracted data
 	 * @return Type of parsed frame
 	 */
 	enum wsFrameType wsParseInputFrame(uint8_t *inputFrame, size_t inputLength,
-		uint8_t *outDataPtr, size_t *outLength);
+		uint8_t **dataPtr, size_t *dataLength);
 
 	/**
 	 * @param hs NULL handshake structure

@@ -29,7 +29,7 @@
 #ifdef DEBUG
   #define __ASSERT_USE_STDERR
 #endif
-#include <WebSocket.h>
+#include <websocket.h>
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 byte ip[] = { 192, 168, 0, 4 };

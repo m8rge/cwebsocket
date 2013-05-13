@@ -12,8 +12,10 @@ With this library you can get realtime properties from your microcontroller only
 
 ## Notes
 ### Not supported
-* frames with raw data (implemented, but not tested)
-* non-latin characters in text frames
-* websocket extensions
-* cookies
-* continuation frame (all payload data length must be encapsulated into one frame)
+* [secure websocket](http://tools.ietf.org/html/rfc6455#section-3)
+* [websocket extensions](http://tools.ietf.org/html/rfc6455#section-9)
+* [websocket subprotocols](http://tools.ietf.org/html/rfc6455#section-1.9)
+* [status codes](http://tools.ietf.org/html/rfc6455#section-7.4) 
+* [cookies and/or authentication-related header fields](http://tools.ietf.org/html/rfc6455#page-19)
+* [continuation frame](http://tools.ietf.org/html/rfc6455#section-11.8) (all payload data length must be encapsulated into one frame)
+* big frames, which payload size bigger than size_t
