@@ -8,7 +8,7 @@ It very easy to embed in any your application at any platform.
 Library design was made with microcontrollers architecture in mind.  
 
 ## Microcontrollers
-With this library you can get realtime properties from your microcontroller only with browser! Currently we have arduino support.
+With this library you can turn your Arduino to websocket server and get realtime properties from your microcontroller only with browser!
 
 ## Notes
 ### Not supported
