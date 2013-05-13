@@ -56,9 +56,9 @@ void sendAndLog(EthernetClient client, const uint8_t *buffer, size_t bufferSize)
 {
   client.write(buffer, bufferSize);
   #ifdef DEBUG
-  printf("out packet:\n");
+  printf_P(PSTR("out packet:\n"));
   fwrite(buffer, 1, bufferSize, stdout);
-  printf("\n");
+  printf_P(PSTR("\n"));
   #endif
 }
 
@@ -96,16 +96,18 @@ void clientWorker(EthernetClient client)
     }
     
     if ((frameType == WS_INCOMPLETE_FRAME && readedLength == BUF_LEN) || frameType == WS_ERROR_FRAME) {
+      #ifdef DEBUG
       if (frameType == WS_INCOMPLETE_FRAME)
-        printf("buffer too small");
+        printf_P(PSTR("buffer too small"));
       else
-        printf("error in incoming frame\n");
+        printf_P(PSTR("error in incoming frame\n"));
+    #endif
       
       if (state == WS_STATE_OPENING) {
         prepareBuffer;
-        frameSize = sprintf((char *)buffer,
-                            "HTTP/1.1 400 Bad Request\r\n"
-                            "%s%s\r\n\r\n",
+        frameSize = sprintf_P((char *)buffer,
+                            PSTR("HTTP/1.1 400 Bad Request\r\n"
+                            "%s%s\r\n\r\n"),
                             versionField,
                             version);
         sendAndLog(client, buffer, frameSize);
@@ -124,7 +126,7 @@ void clientWorker(EthernetClient client)
       if (frameType == WS_OPENING_FRAME) {
         // if resource is right, generate answer handshake and send it
         if (strcmp(hs.resource, "/echo") != 0) {
-          frameSize = sprintf((char *)buffer, "HTTP/1.1 404 Not Found\r\n\r\n");
+          frameSize = sprintf_P((char *)buffer, PSTR("HTTP/1.1 404 Not Found\r\n\r\n"));
           sendAndLog(client, buffer, frameSize);
         }
     
@@ -166,9 +168,12 @@ void loop()
 {
   EthernetClient client = server.available();
   if (client) {
+    #ifdef DEBUG
+      printf_P(PSTR("connected\n"));
+    #endif
     clientWorker(client);
     #ifdef DEBUG
-      printf_P(PSTR("Disconnected\n"));
+      printf_P(PSTR("disconnected\n"));
     #endif
   }
 }
