@@ -21,6 +21,7 @@
  *
  */
 
+#include<netinet/in.h>
 #include "websocket.h"
 
 static char rn[] PROGMEM = "\r\n";
@@ -202,7 +203,7 @@ void wsMakeFrame(const uint8_t *data, size_t dataLength,
         *outLength = 2;
     } else if (dataLength <= 0xFFFF) {
         outFrame[1] = 126;
-        uint16_t payloadLength16b = dataLength;
+        uint16_t payloadLength16b = htons(dataLength);
         memcpy(&outFrame[2], &payloadLength16b, 2);
         *outLength = 4;
     } else {
