@@ -21,7 +21,6 @@
  *
  */
 
-#include<netinet/in.h>
 #include "websocket.h"
 
 static char rn[] PROGMEM = "\r\n";
