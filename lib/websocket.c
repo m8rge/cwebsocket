@@ -285,7 +285,7 @@ enum wsFrameType wsParseInputFrame(uint8_t *inputFrame, size_t inputLength,
             *dataPtr = &inputFrame[2 + payloadFieldExtraBytes + 4];
             *dataLength = payloadLength;
 		
-            uint8_t i;
+            size_t i;
             for (i = 0; i < *dataLength; i++) {
                 (*dataPtr)[i] = (*dataPtr)[i] ^ maskingKey[i%4];
             }
