@@ -132,8 +132,8 @@ void clientWorker(int clientSocket)
                 // if resource is right, generate answer handshake and send it
                 if (strcmp(hs.resource, "/echo") != 0) {
                     frameSize = sprintf((char *)buffer, "HTTP/1.1 404 Not Found\r\n\r\n");
-                    if (safeSend(clientSocket, buffer, frameSize) == EXIT_FAILURE)
-                        break;
+                    safeSend(clientSocket, buffer, frameSize);
+                    break;
                 }
             
                 prepareBuffer;
