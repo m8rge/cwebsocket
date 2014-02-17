@@ -148,9 +148,10 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
         || memcmp_P(versionString, version, strlen_P(version)) != 0)
     {
         hs->frameType = WS_ERROR_FRAME;
+    } else {
+        hs->frameType = WS_OPENING_FRAME;
     }
     
-    hs->frameType = WS_OPENING_FRAME;
     return hs->frameType;
 }
 
