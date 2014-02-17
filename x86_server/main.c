@@ -36,6 +36,8 @@
 #define BUF_LEN 0xFFFF
 #define PACKET_DUMP
 
+uint8_t buffer[BUF_LEN];
+
 void error(const char *msg)
 {
     perror(msg);
@@ -66,7 +68,6 @@ int safeSend(int clientSocket, const uint8_t *buffer, size_t bufferSize)
 
 void clientWorker(int clientSocket)
 {
-    uint8_t buffer[BUF_LEN];
     memset(buffer, 0, BUF_LEN);
     size_t readedLength = 0;
     size_t frameSize = BUF_LEN;
