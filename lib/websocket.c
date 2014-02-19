@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Putilov Andrey
+ * Copyright (c) 2014 Putilov Andrey
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,25 +34,34 @@ void nullHandshake(struct handshake *hs)
     hs->frameType = WS_EMPTY_FRAME;
 }
 
-static char* getUptoLinefeed(const char *startFrom)
+void freeHandshake(struct handshake *hs)
 {
-    char *write_to = NULL;
-    uint8_t new_length = strstr_P(startFrom, rn) - startFrom;
-    assert(new_length);
-    write_to = (char *)malloc(new_length+1); //+1 for '\x00'
-    assert(write_to);
-    memcpy(write_to, startFrom, new_length);
-    write_to[ new_length ] = 0;
-
-    return write_to;
+    if (hs->host) {
+        free(hs->host);
+    }
+    if (hs->origin) {
+        free(hs->origin);
+    }
+    if (hs->resource) {
+        free(hs->resource);
+    }
+    if (hs->key) {
+        free(hs->key);
+    }
+    nullHandshake(hs);
 }
 
-static void copyUptoLinefeed(const char *startFrom, char *writeTo)
+static char* getUptoLinefeed(const char *startFrom)
 {
+    char *writeTo = NULL;
     uint8_t newLength = strstr_P(startFrom, rn) - startFrom;
     assert(newLength);
+    writeTo = (char *)malloc(newLength+1); //+1 for '\x00'
     assert(writeTo);
     memcpy(writeTo, startFrom, newLength);
+    writeTo[ newLength ] = 0;
+
+    return writeTo;
 }
 
 enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
@@ -63,7 +72,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 
     if (!strstr((const char *)inputFrame, "\r\n\r\n"))
         return WS_INCOMPLETE_FRAME;
-	
+    
     if (memcmp_P(inputFrame, PSTR("GET "), 4) != 0)
         return WS_ERROR_FRAME;
     // measure resource size
@@ -94,8 +103,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
     uint8_t connectionFlag = FALSE;
     uint8_t upgradeFlag = FALSE;
     uint8_t subprotocolFlag = FALSE;
-    char versionString[2];
-    memset(versionString, 0, sizeof(versionString));
+    uint8_t versionMismatch = FALSE;
     while (inputPtr < endPtr && inputPtr[0] != '\r' && inputPtr[1] != '\n') {
         if (memcmp_P(inputPtr, hostField, strlen_P(hostField)) == 0) {
             inputPtr += strlen_P(hostField);
@@ -109,7 +117,6 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
         } else
         if (memcmp_P(inputPtr, protocolField, strlen_P(protocolField)) == 0) {
             inputPtr += strlen_P(protocolField);
-            getUptoLinefeed(inputPtr);
             subprotocolFlag = TRUE;
         } else
         if (memcmp_P(inputPtr, keyField, strlen_P(keyField)) == 0) {
@@ -119,7 +126,11 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
         } else
         if (memcmp_P(inputPtr, versionField, strlen_P(versionField)) == 0) {
             inputPtr += strlen_P(versionField);
-            copyUptoLinefeed(inputPtr, versionString);
+            char *versionString = NULL;
+            versionString = getUptoLinefeed(inputPtr);
+            if (memcmp_P(versionString, version, strlen_P(version)) != 0)
+                versionMismatch = TRUE;
+            free(versionString);
         } else
         if (memcmp_P(inputPtr, connectionField, strlen_P(connectionField)) == 0) {
             inputPtr += strlen_P(connectionField);
@@ -129,6 +140,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
             assert(connectionValue);
             if (strstr_P(connectionValue, upgrade) != NULL)
                 connectionFlag = TRUE;
+            free(connectionValue);
         } else
         if (memcmp_P(inputPtr, upgradeField, strlen_P(upgradeField)) == 0) {
             inputPtr += strlen_P(upgradeField);
@@ -138,6 +150,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
             assert(compare);
             if (memcmp_P(compare, websocket, strlen_P(websocket)) == 0)
                 upgradeFlag = TRUE;
+            free(compare);
         };
 
         inputPtr = strstr_P(inputPtr, rn) + 2;
@@ -145,7 +158,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 
     // we have read all data, so check them
     if (!hs->host || !hs->key || !connectionFlag || !upgradeFlag || subprotocolFlag
-        || memcmp_P(versionString, version, strlen_P(version)) != 0)
+        || versionMismatch)
     {
         hs->frameType = WS_ERROR_FRAME;
     } else {
@@ -182,7 +195,8 @@ void wsGetHandshakeAnswer(const struct handshake *hs, uint8_t *outFrame,
                             connectionField,
                             upgrade2,
                             responseKey);
-	
+    
+    free(responseKey);
     // if assert fail, that means, that we corrupt memory
     assert(written <= *outLength);
     *outLength = written;
@@ -195,7 +209,7 @@ void wsMakeFrame(const uint8_t *data, size_t dataLength,
     assert(frameType < 0x10);
     if (dataLength > 0)
         assert(data);
-	
+    
     outFrame[0] = 0x80 | frameType;
     
     if (dataLength <= 125) {
@@ -255,7 +269,7 @@ enum wsFrameType wsParseInputFrame(uint8_t *inputFrame, size_t inputLength,
 
     if (inputLength < 2)
         return WS_INCOMPLETE_FRAME;
-	
+    
     if ((inputFrame[0] & 0x70) != 0x0) // checks extensions off
         return WS_ERROR_FRAME;
     if ((inputFrame[0] & 0x80) != 0x80) // we haven't continuation frames support
@@ -285,7 +299,7 @@ enum wsFrameType wsParseInputFrame(uint8_t *inputFrame, size_t inputLength,
 
             *dataPtr = &inputFrame[2 + payloadFieldExtraBytes + 4];
             *dataLength = payloadLength;
-		
+        
             size_t i;
             for (i = 0; i < *dataLength; i++) {
                 (*dataPtr)[i] = (*dataPtr)[i] ^ maskingKey[i%4];

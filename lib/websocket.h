@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Putilov Andrey
+ * Copyright (c) 2014 Putilov Andrey
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,9 +22,9 @@
  */
 
 #ifndef WEBSOCKET_H
-#define	WEBSOCKET_H
+#define WEBSOCKET_H
 
-#ifdef	__cplusplus
+#ifdef  __cplusplus
 extern "C" {
 #endif
 
@@ -105,7 +105,7 @@ struct handshake {
      */
     enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
                                       struct handshake *hs);
-	
+    
     /**
      * @param hs Filled handshake structure
      * @param outFrame Pointer to frame buffer
@@ -140,8 +140,13 @@ struct handshake {
      */
     void nullHandshake(struct handshake *hs);
 
-#ifdef	__cplusplus
+    /**
+     * @param hs free and NULL handshake structure
+     */
+    void freeHandshake(struct handshake *hs);
+
+#ifdef  __cplusplus
 }
 #endif
 
-#endif	/* WEBSOCKET_H */
+#endif  /* WEBSOCKET_H */
