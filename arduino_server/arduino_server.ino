@@ -132,6 +132,7 @@ void clientWorker(EthernetClient client)
     
         prepareBuffer;
         wsGetHandshakeAnswer(&hs, buffer, &frameSize);
+        freeHandshake(&hs);
         sendAndLog(client, buffer, frameSize);
         state = WS_STATE_NORMAL;
         initNewFrame;
@@ -155,6 +156,7 @@ void clientWorker(EthernetClient client)
           
           prepareBuffer;
           wsMakeFrame(recievedString, dataSize, buffer, &frameSize, WS_TEXT_FRAME);
+          free(recievedString);
           sendAndLog(client, buffer, frameSize);
           initNewFrame;
         }
