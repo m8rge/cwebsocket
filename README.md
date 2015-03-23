@@ -18,4 +18,4 @@ With this library you can turn your Arduino to websocket server and get realtime
 * [status codes](http://tools.ietf.org/html/rfc6455#section-7.4) 
 * [cookies and/or authentication-related header fields](http://tools.ietf.org/html/rfc6455#page-19)
 * [continuation frame](http://tools.ietf.org/html/rfc6455#section-11.8) (all payload data must be encapsulated into one websocket frame)
-* big frames, which payload size bigger than size_t
+* big frames, which payload size bigger than 0xFFFF

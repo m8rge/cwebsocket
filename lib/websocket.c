@@ -72,7 +72,7 @@ enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
 
     if (!strstr((const char *)inputFrame, "\r\n\r\n"))
         return WS_INCOMPLETE_FRAME;
-    
+	
     if (memcmp_P(inputFrame, PSTR("GET "), 4) != 0)
         return WS_ERROR_FRAME;
     // measure resource size
@@ -180,11 +180,12 @@ void wsGetHandshakeAnswer(const struct handshake *hs, uint8_t *outFrame,
     responseKey = malloc(length);
     memcpy(responseKey, hs->key, strlen(hs->key));
     memcpy_P(&(responseKey[strlen(hs->key)]), secret, strlen_P(secret));
-    char shaHash[20];
+    unsigned char shaHash[20];
     memset(shaHash, 0, sizeof(shaHash));
     sha1(shaHash, responseKey, length*8);
-    base64enc(responseKey, shaHash, 20);
-
+    size_t base64Length = base64(responseKey, length, shaHash, 20);
+    responseKey[base64Length] = '\0';
+    
     int written = sprintf_P((char *)outFrame,
                             PSTR("HTTP/1.1 101 Switching Protocols\r\n"
                                  "%s%s\r\n"
@@ -195,7 +196,7 @@ void wsGetHandshakeAnswer(const struct handshake *hs, uint8_t *outFrame,
                             connectionField,
                             upgrade2,
                             responseKey);
-    
+	
     free(responseKey);
     // if assert fail, that means, that we corrupt memory
     assert(written <= *outLength);
@@ -209,7 +210,7 @@ void wsMakeFrame(const uint8_t *data, size_t dataLength,
     assert(frameType < 0x10);
     if (dataLength > 0)
         assert(data);
-    
+	
     outFrame[0] = 0x80 | frameType;
     
     if (dataLength <= 125) {
@@ -221,9 +222,14 @@ void wsMakeFrame(const uint8_t *data, size_t dataLength,
         memcpy(&outFrame[2], &payloadLength16b, 2);
         *outLength = 4;
     } else {
+        assert(dataLength <= 0xFFFF);
+        
+        /* implementation for 64bit systems
         outFrame[1] = 127;
+        dataLength = htonll(dataLength);
         memcpy(&outFrame[2], &dataLength, 8);
         *outLength = 10;
+        */
     }
     memcpy(&outFrame[*outLength], data, dataLength);
     *outLength+= dataLength;
@@ -247,8 +253,12 @@ static size_t getPayloadLength(const uint8_t *inputFrame, size_t inputLength,
         uint16_t payloadLength16b = 0;
         *payloadFieldExtraBytes = 2;
         memcpy(&payloadLength16b, &inputFrame[2], *payloadFieldExtraBytes);
-        payloadLength = payloadLength16b;
+        payloadLength = ntohs(payloadLength16b);
     } else if (payloadLength == 0x7F) {
+        *frameType = WS_ERROR_FRAME;
+        return 0;
+        
+        /* // implementation for 64bit systems
         uint64_t payloadLength64b = 0;
         *payloadFieldExtraBytes = 8;
         memcpy(&payloadLength64b, &inputFrame[2], *payloadFieldExtraBytes);
@@ -256,7 +266,8 @@ static size_t getPayloadLength(const uint8_t *inputFrame, size_t inputLength,
             *frameType = WS_ERROR_FRAME;
             return 0;
         }
-        payloadLength = (size_t)payloadLength64b;
+        payloadLength = (size_t)ntohll(payloadLength64b);
+        */
     }
 
     return payloadLength;
@@ -269,7 +280,7 @@ enum wsFrameType wsParseInputFrame(uint8_t *inputFrame, size_t inputLength,
 
     if (inputLength < 2)
         return WS_INCOMPLETE_FRAME;
-    
+	
     if ((inputFrame[0] & 0x70) != 0x0) // checks extensions off
         return WS_ERROR_FRAME;
     if ((inputFrame[0] & 0x80) != 0x80) // we haven't continuation frames support
@@ -283,23 +294,22 @@ enum wsFrameType wsParseInputFrame(uint8_t *inputFrame, size_t inputLength,
             opcode == WS_CLOSING_FRAME ||
             opcode == WS_PING_FRAME ||
             opcode == WS_PONG_FRAME
-    ) 
-    { 
+    ){
         enum wsFrameType frameType = opcode;
 
         uint8_t payloadFieldExtraBytes = 0;
         size_t payloadLength = getPayloadLength(inputFrame, inputLength,
                                                 &payloadFieldExtraBytes, &frameType);
         if (payloadLength > 0) {
-            if (payloadLength < inputLength-6-payloadFieldExtraBytes) // 4-maskingKey, 2-header
+            if (payloadLength + 6 + payloadFieldExtraBytes > inputLength) // 4-maskingKey, 2-header
                 return WS_INCOMPLETE_FRAME;
             uint8_t *maskingKey = &inputFrame[2 + payloadFieldExtraBytes];
 
-            assert(payloadLength == inputLength-6-payloadFieldExtraBytes);
+            assert(payloadLength == inputLength - 6 - payloadFieldExtraBytes);
 
             *dataPtr = &inputFrame[2 + payloadFieldExtraBytes + 4];
             *dataLength = payloadLength;
-        
+		
             size_t i;
             for (i = 0; i < *dataLength; i++) {
                 (*dataPtr)[i] = (*dataPtr)[i] ^ maskingKey[i%4];

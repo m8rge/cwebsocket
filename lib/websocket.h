@@ -22,9 +22,9 @@
  */
 
 #ifndef WEBSOCKET_H
-#define WEBSOCKET_H
+#define	WEBSOCKET_H
 
-#ifdef  __cplusplus
+#ifdef	__cplusplus
 extern "C" {
 #endif
 
@@ -36,7 +36,7 @@ extern "C" {
 #include <stdio.h> /* sscanf */
 #include <ctype.h> /* isdigit */
 //#include <stddef.h> /* size_t */
-#include "base64_enc.h"
+#include "aw-base64.h"
 #include "sha1.h"
 #ifdef __AVR__
     #include <avr/pgmspace.h>
@@ -105,7 +105,7 @@ struct handshake {
      */
     enum wsFrameType wsParseHandshake(const uint8_t *inputFrame, size_t inputLength,
                                       struct handshake *hs);
-    
+	
     /**
      * @param hs Filled handshake structure
      * @param outFrame Pointer to frame buffer
@@ -145,8 +145,8 @@ struct handshake {
      */
     void freeHandshake(struct handshake *hs);
 
-#ifdef  __cplusplus
+#ifdef	__cplusplus
 }
 #endif
 
-#endif  /* WEBSOCKET_H */
+#endif	/* WEBSOCKET_H */
