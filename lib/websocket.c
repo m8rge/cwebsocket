@@ -182,7 +182,7 @@ void wsGetHandshakeAnswer(const struct handshake *hs, uint8_t *outFrame,
     memcpy_P(&(responseKey[strlen(hs->key)]), secret, strlen_P(secret));
     unsigned char shaHash[20];
     memset(shaHash, 0, sizeof(shaHash));
-    sha1(shaHash, responseKey, length*8);
+    sha1(shaHash, responseKey, length);
     size_t base64Length = base64(responseKey, length, shaHash, 20);
     responseKey[base64Length] = '\0';
     

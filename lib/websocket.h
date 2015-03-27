@@ -37,7 +37,7 @@ extern "C" {
 #include <ctype.h> /* isdigit */
 //#include <stddef.h> /* size_t */
 #include "aw-base64.h"
-#include "sha1.h"
+#include "aw-sha1.h"
 #ifdef __AVR__
     #include <avr/pgmspace.h>
 #else
